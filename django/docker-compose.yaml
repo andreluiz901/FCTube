@@ -1,0 +1,45 @@
+include:
+  - ../postgres/docker-compose.yaml
+  - ../rabbitmq/docker-compose.yaml
+  - ../nginx/docker-compose.yaml
+
+services:
+
+  django:
+    build: .
+    ports:
+      - 8000:8000
+    environment:
+      - DATABASE_URL=postgres://postgres:root@postgres:5432/django_videos
+      #- DATABASE_URL=sqlite:///db.sqlite3\
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ASSETS_URL=http://host.docker.internal:9000/media/uploads
+    volumes:
+      - .:/home/my-user/app
+      - external-storage:/media/uploads
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    
+  change_media_permission:
+    build: .
+    user: root
+    command: chown -R 1000:1000 /media/uploads
+    volumes:
+      - external-storage:/media/uploads
+    depends_on:
+      - django
+  
+  
+
+volumes:
+  external-storage:
+    external: true
+
+# Windows - WSL
+
+# C:\Windows\System32\drivers\etc\hosts (bloco em notas admin)
+
+#Mac ou Linux
+# /etc/hosts 
+
+# 127.0.0.1 host.docker.internal

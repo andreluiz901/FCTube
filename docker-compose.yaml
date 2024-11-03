@@ -1,0 +1,4 @@
+include:
+  - ./golang/docker-compose.yaml
+  - ./django/docker-compose.yaml
+  - ./nextjs/docker-compose.yaml

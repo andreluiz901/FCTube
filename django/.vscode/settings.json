@@ -1,0 +1,40 @@
+{
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.indexing": true,
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "django",
+            "includeAllSymbols": true,
+            "depth": 20
+        },
+        {
+            "name": "rest_framework",
+            "includeAllSymbols": true,
+            "depth": 20
+        }
+    ],
+    "python.analysis.extraPaths": [
+        ".venv/lib/python3.12/site-packages",
+    ],
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#051f15",
+        "activityBar.background": "#051f15",
+        "activityBar.foreground": "#e7e7e7",
+        "activityBar.inactiveForeground": "#e7e7e799",
+        "activityBarBadge.background": "#821fc0",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "commandCenter.border": "#e7e7e799",
+        "sash.hoverBorder": "#051f15",
+        "statusBar.background": "#051f15",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#0c4b33",
+        "statusBarItem.remoteBackground": "#051f15",
+        "statusBarItem.remoteForeground": "#e7e7e7",
+        "tab.activeBorder": "#051f15",
+        "titleBar.activeBackground": "#051f15",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#051f1599",
+        "titleBar.inactiveForeground": "#e7e7e799"
+    },
+    "peacock.remoteColor": "#0C4B33",
+}

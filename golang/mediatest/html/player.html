@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPEG-DASH Video Test</title>
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script> <!-- Carrega a biblioteca dash.js -->
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        video {
+            width: 80%;
+            max-width: 800px;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <video id="videoPlayer" controls></video>
+
+    <script>
+        var url = "media/output.mpd"; // Caminho para o arquivo .mpd gerado
+        var player = dashjs.MediaPlayer().create(); // Cria o player dash.js
+        player.initialize(document.querySelector("#videoPlayer"), url, true); // Inicializa o player
+    </script>
+
+</body>
+</html>

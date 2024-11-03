@@ -1,0 +1,169 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n admin_urls static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/forms.css" %}">{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; {% if has_view_permission %}<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
+&rsaquo; {% blocktranslate with name=opts.verbose_name %}Upload vídeo{% endblocktranslate %}{{ original|truncatewords:"18" }}
+</div>
+{% endblock %}
+
+{% block content %}
+<form id="upload-form" method="post" enctype="multipart/form-data">
+    <p id="errornote" class="errornote hidden"></p>
+    {% csrf_token %}
+    <div class="form-row">
+        <strong>Título:</strong> {{ video.title }}
+        <br/>
+        <strong>Status do vídeo:</strong> {{ video.get_video_status_display }}
+        
+    </div>
+    <div class="form-row">
+        <input type="file" name="video" accept="video/mp4"/>
+    </div>
+    <div class="submit-row">
+        <input type="submit" value="Fazer upload" class="default" name="btnUploadVideo" id="btnUploadVideo"/>
+    </div>
+</form>
+
+<div id="progress-bar" style="width: 100%; background: #f3f3f3;">
+    <div id="progress" style="width: 0%; height: 20px; background: #4caf50; text-align: center;">0%</div>
+</div>
+
+<script type="text/javascript">
+    const CHUNK_SIZE = 1 * 1024 * 1024; // 1 MB per chunk
+    const MAX_SIMULTANEOUS_UPLOADS = 2; // Number of simultaneous uploads
+
+    document.getElementById('upload-form').addEventListener('submit', handleFormSubmit);
+
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+        changeSubmitStatus(true);
+        const fileInput = event.target.querySelector('input[type="file"]');
+        
+        if (fileInput.files.length === 0) {
+            alert('Selecione um arquivo primeiro!');
+            changeSubmitStatus(false);
+            return;
+        }
+
+        try{
+            const file = fileInput.files[0];
+            await uploadFileInChunks(file);
+        } finally {
+            changeSubmitStatus(false);
+        }
+    }
+
+    function changeSubmitStatus(isDisabled) {
+        const btnUploadVideo = document.getElementById('btnUploadVideo');
+        btnUploadVideo.disabled = isDisabled;
+        btnUploadVideo.value = isDisabled ? 'Enviando...' : 'Fazer upload';
+    }
+
+    async function uploadFileInChunks(file) {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        
+        const chunkPromises = generateChunkPromises(file, totalChunks);
+
+        try {
+            await runSimultaneousUploads(chunkPromises);
+            await finishUpload(file.name, totalChunks);
+        } catch (error) {
+            displayError('Não foi possível fazer o upload do arquivo.');
+            console.error(error);
+        }
+    }
+
+    function generateChunkPromises(file, totalChunks) {
+        let uploadedChunks = 0;
+        const chunkPromises = [];
+        for (let currentChunk = 0; currentChunk < totalChunks; currentChunk++) {
+            const start = currentChunk * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('input[name="csrfmiddlewaretoken"]').value);
+            formData.append('chunk', chunk);
+            formData.append('chunkIndex', currentChunk);
+
+            chunkPromises.push(() => uploadChunk(formData, () => {
+                uploadedChunks++;
+                updateProgress(uploadedChunks, totalChunks);
+            }));
+        }
+        return chunkPromises;
+    }
+
+    async function uploadChunk(formData, onChunkUploaded) {
+        try {
+            const response = await fetch("{% url 'admin:core_video_upload' id=id %}", {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const textError = await response.text();
+                throw new Error(`Erro no upload do chunk: ${textError}`);
+            }
+            onChunkUploaded();  // Update progress after success
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async function runSimultaneousUploads(uploadTasks) {
+        const queue = uploadTasks.slice();  // Copy the list of uploads
+        const activeUploads = [];
+
+        while (queue.length > 0 || activeUploads.length > 0) {
+            while (queue.length > 0 && activeUploads.length < MAX_SIMULTANEOUS_UPLOADS) {
+                const task = queue.shift();
+                const uploadPromise = task().finally(() => {
+                    activeUploads.splice(activeUploads.indexOf(uploadPromise), 1);
+                });
+                activeUploads.push(uploadPromise);
+            }
+            await Promise.race(activeUploads);
+        }
+    }
+
+    async function finishUpload(fileName, totalChunks) {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', document.querySelector('input[name="csrfmiddlewaretoken"]').value);
+        formData.append('fileName', fileName);
+        formData.append('totalChunks', totalChunks);
+
+        const response = await fetch("{% url 'admin:core_video_upload_finish' id=id %}", {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const textError = await response.text();
+            throw new Error(`Erro ao finalizar o upload: ${textError}`);
+        }
+
+        window.location.href = "{% url 'admin:core_video_upload' id=id %}";
+    }
+
+    function updateProgress(uploadedChunks, totalChunks) {
+        const progressElement = document.getElementById('progress');
+        const percentage = Math.floor((uploadedChunks / totalChunks) * 100);
+        progressElement.innerText = `${percentage}%`;
+        progressElement.style.width = `${percentage}%`;
+    }
+
+    function displayError(message) {
+        const errorNoteElement = document.getElementById('errornote');
+        errorNoteElement.classList.remove('hidden');
+        errorNoteElement.innerText = message;
+    }
+</script>
+{% endblock %}

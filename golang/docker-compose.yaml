@@ -1,0 +1,36 @@
+include:
+  - ../postgres/docker-compose.yaml
+  - ../rabbitmq/docker-compose.yaml
+  
+services:
+  go_app_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app # Mount the local app directory for live development
+      - external-storage:/media/uploads # Mount external storage volume
+    tty: true
+    stdin_open: true
+    ports:
+      - "8080:8080"
+    environment:
+      DEBUG: "true"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "root"
+      POSTGRES_DB: "converter"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_SSL_MODE: "disable"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      CONVERSION_EXCHANGE: "conversion_exchange"
+      CONVERSION_KEY: "conversion"
+      CONFIRMATION_KEY: "finish-conversion"
+      VIDEO_ROOT_PATH: "/media/uploads"
+      QUEUE_NAME: "video_conversion_queue"
+    depends_on:
+      - postgres
+      - rabbitmq
+
+volumes:
+  external-storage:
+    external: true

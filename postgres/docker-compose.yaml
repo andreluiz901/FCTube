@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:15.8-alpine3.20
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: "root"
+    volumes:
+      - ./.docker/postgres:/var/lib/postgresql/data
+      - ../golang/prepare-db.sql:/docker-entrypoint-initdb.d/prepare-db-golang.sql
+      - ../django/prepare-db.sql:/docker-entrypoint-initdb.d/prepare-db-django.sql
+
+  pgadmin:
+    image: dpage/pgadmin4:8.11.0
+    restart: always
+    ports:
+      - 8888:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@user.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'False'
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
